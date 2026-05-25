@@ -1,0 +1,6 @@
+# .env
+SECRET_KEY="replace_this_with_a_long_random_string_in_production"
+ADMIN_DEFAULT_PASSWORD="mcm2026_super_secret"
+
+# Comma-separated list of allowed domains (No spaces!)
+ALLOWED_ORIGINS="http://localhost:3000,https://dashboard.mt-enterprise.com"
