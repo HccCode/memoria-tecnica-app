@@ -76,6 +76,7 @@ class UserModel(Base):
     password_hash = Column(String(255), nullable=False)
     role = Column(String(50), default="RNOC")
     plazas = Column(String(500), default="*")
+    nombre_completo = Column(String(150), nullable=False)
     
     # CAMPOS ADMINISTRATIVOS
     num_empleado = Column(String(50), nullable=True)
@@ -122,6 +123,10 @@ class PortModel(Base):
     direccion = Column(Text, nullable=True)  
     coordenadas = Column(String(100), nullable=True)  
     comentarios = Column(Text)
+    # NUEVOS CAMPOS:
+    contacto_nombre = Column(String(150), nullable=True)
+    contacto_telefono = Column(String(50), nullable=True)
+
 
 Base.metadata.create_all(bind=engine)
 
@@ -160,6 +165,7 @@ class UserRegister(BaseModel):
     username: str
     password: str
     role: str
+    nombre_completo: str
     plazas: str = "*"
     num_empleado: str = None
     correo: str = None
@@ -171,6 +177,7 @@ class UserUpdate(BaseModel):
     username: str = None
     password: str = None
     role: str = None
+    nombre_completo: str = None
     plazas: str = None
     num_empleado: str = None
     correo: str = None
@@ -225,6 +232,8 @@ class PortUpdate(BaseModel):
     DIRECCION: str = None  
     COORDENADAS: str = None  
     COMENTARIOS: str = None
+    CONTACTO_NOMBRE: str = None
+    CONTACTO_TELEFONO: str = None
 
 # SEED ADMINISTRADOR
 db_init = SessionLocal()
@@ -233,7 +242,8 @@ if db_init.query(UserModel).count() == 0:
         username="admin", 
         password_hash=hash_password(settings.admin_default_password), 
         role="ADMIN", 
-        plazas="*"
+        plazas="*",
+        nombre_completo="Administrador del Sistema"
     ))
     db_init.commit()
 db_init.close()
@@ -254,7 +264,7 @@ def login(data: UserLogin, db: Session = Depends(get_db)):
     if not user or not verify_password(data.password, user.password_hash):
         return JSONResponse(status_code=400, content={"status": "error", "detail": "Credenciales inválidas"})
     access_token = jwt.encode({"sub": user.username, "role": user.role, "plazas": user.plazas, "exp": datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)}, SECRET_KEY, algorithm=ALGORITHM)
-    return {"status": "success", "token": access_token, "user": {"username": user.username, "role": user.role, "plazas": user.plazas}}
+    return {"status": "success", "token": access_token, "user": {"username": user.username, "role": user.role, "plazas": user.plazas,"nombre_completo": user.nombre_completo}}
 
 @app.post("/api/auth/register")
 def register(data: UserRegister, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -266,7 +276,7 @@ def register(data: UserRegister, current_user: UserModel = Depends(get_current_u
     
     db.add(UserModel(
         username=data.username.strip(), password_hash=hash_password(data.password), role=data.role, plazas=data.plazas,
-        num_empleado=data.num_empleado, correo=data.correo, area_org=data.area_org,
+        nombre_completo=data.nombre_completo.strip(),num_empleado=data.num_empleado, correo=data.correo, area_org=data.area_org,
         region_asignacion=data.region_asignacion, puesto=data.puesto
     ))
     db.commit()
@@ -279,7 +289,7 @@ def list_all_users(current_user: UserModel = Depends(get_current_user), db: Sess
         
     return [{
         "id": u.id, "username": u.username, "role": u.role, "plazas": u.plazas,
-        "num_empleado": u.num_empleado, "correo": u.correo, "area_org": u.area_org,
+        "nombre_completo": u.nombre_completo,"num_empleado": u.num_empleado, "correo": u.correo, "area_org": u.area_org,
         "region_asignacion": u.region_asignacion, "puesto": u.puesto
     } for u in db.query(UserModel).all()]
 
@@ -293,6 +303,7 @@ def update_user_profile(user_id: int, data: UserUpdate, current_user: UserModel 
         
     if data.username: user.username = data.username.strip()
     if data.role: user.role = data.role
+    if data.nombre_completo: user.nombre_completo = data.nombre_completo.strip()
     if data.plazas is not None: user.plazas = data.plazas
     
     if data.num_empleado is not None: user.num_empleado = data.num_empleado
@@ -328,10 +339,15 @@ def get_geography_tree(current_user: UserModel = Depends(get_current_user), db: 
             query_ciudades = query_ciudades.filter(CityModel.id.in_(ids_permitidos))
         ciudades = query_ciudades.all()
         
-        if not ciudades: return {}
+        # ❌ ESTA ES LA LÍNEA QUE CAUSABA EL ERROR: if not ciudades: return {}
+        # Fue eliminada para permitir que se muestren regiones vacías.
             
         ids_ciudades_filtradas = [c.id for c in ciudades]
-        hubs = db.query(HubMappingModel).filter(HubMappingModel.ciudad_id.in_(ids_ciudades_filtradas)).all()
+        
+        # ✅ Validación añadida: Solo buscar hubs si hay ciudades filtradas
+        hubs = []
+        if ids_ciudades_filtradas:
+            hubs = db.query(HubMappingModel).filter(HubMappingModel.ciudad_id.in_(ids_ciudades_filtradas)).all()
 
         hubs_por_ciudad = {}
         for h in hubs:
@@ -550,6 +566,8 @@ def upload_hub_excel(
         idx_direccion = get_index(["DIRECCIÓN", "DIRECCION"], column_headers)  
         idx_coordenadas = get_index(["COORDENADAS", "COORDENADA"], column_headers)  
         idx_comentarios = get_index(["COMENTARIOS", "OBSERVACIONES"], column_headers)
+        idx_contacto_nombre = get_index(["CONTACTO NOMBRE", "NOMBRE CONTACTO", "CONTACTO"], column_headers)
+        idx_contacto_telefono = get_index(["CONTACTO TELEFONO", "TELEFONO CONTACTO", "TELEFONO", "TELÉFONO"], column_headers)
 
         if idx_puerto == -1: return JSONResponse(status_code=400, content={"status": "error", "detail": "Falta columna PUERTO"})
 
@@ -582,7 +600,8 @@ def upload_hub_excel(
                 marca_cpe=read_val(idx_mcpe), modelo_cpe=read_val(idx_mocpe), serie_cpe=read_val(idx_secpe),
                 fecha_entrega=read_val(idx_fentre), serie_sfp_hub=read_val(idx_sfphub), serie_sfp_client=read_val(idx_sfpcli),
                 equipamiento=read_val(idx_equip), serie=read_val(idx_serie), 
-                direccion=read_val(idx_direccion), coordenadas=read_val(idx_coordenadas), comentarios=read_val(idx_comentarios)
+                direccion=read_val(idx_direccion), coordenadas=read_val(idx_coordenadas), comentarios=read_val(idx_comentarios),
+                contacto_nombre=read_val(idx_contacto_nombre), contacto_telefono=read_val(idx_contacto_telefono)
             ))
         db.commit()
         return {"status": "success", "detail": "Aprovisionamiento masivo completado."}
@@ -606,7 +625,7 @@ def get_hub_ports(id_hub: str = Query("CTC"), db: Session = Depends(get_db)):
                 "BUFFER": p.buffer, "HILOS": p.hilos, "PARCHEO": p.parcheo, "LAMBDAS": p.lambdas, "DISTANCIA_CLIENTE": p.distancia_cliente,
                 "MARCA_CPE": p.marca_cpe, "MODELO_CPE": p.modelo_cpe, "SERIE_CPE": p.serie_cpe, "FECHA_DE_ENTREGA": p.fecha_entrega,
                 "SERIE_SFP_HUB": p.serie_sfp_hub, "SERIE_SFP_CLIENTE": p.serie_sfp_client, "EQUIPAMIENTO": p.equipamiento, "SERIE": p.serie,
-                "DIRECCION": p.direccion, "COORDENADAS": p.coordenadas, "COMENTARIOS": p.comentarios
+                "DIRECCION": p.direccion, "COORDENADAS": p.coordenadas, "COMENTARIOS": p.comentarios,"CONTACTO_NOMBRE": p.contacto_nombre, "CONTACTO_TELEFONO": p.contacto_telefono
             })
         
         total_disp = sum(1 for x in puertos_lista if str(x["ESTATUS"]).strip().upper() in ["DISPONIBLE GI", "DISPONIBLE TE"])
@@ -655,7 +674,7 @@ def get_clients_status(db: Session = Depends(get_db)):
                 "BUFFER": p.buffer, "HILOS": p.hilos, "PARCHEO": p.parcheo, "LAMBDAS": p.lambdas, "DISTANCIA_CLIENTE": p.distancia_cliente,
                 "MARCA_CPE": p.marca_cpe, "MODELO_CPE": p.modelo_cpe, "SERIE_CPE": p.serie_cpe, "FECHA_DE_ENTREGA": p.fecha_entrega,
                 "SERIE_SFP_HUB": p.serie_sfp_hub, "SERIE_SFP_CLIENTE": p.serie_sfp_client, "EQUIPAMIENTO": p.equipamiento, "SERIE": p.serie,
-                "DIRECCION": p.direccion, "COORDENADAS": p.coordenadas, "COMENTARIOS": p.comentarios
+                "DIRECCION": p.direccion, "COORDENADAS": p.coordenadas, "COMENTARIOS": p.comentarios,"CONTACTO_NOMBRE": p.contacto_nombre, "CONTACTO_TELEFONO": p.contacto_telefono
             }
 
         return {

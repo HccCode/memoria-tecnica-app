@@ -75,14 +75,15 @@ export default function TarjetaRed({ puertoSeleccionado }) {
 
       </div>
 
-      {/* Sección Opcional: Información Adicional del Cliente si existe */}
-      {puertoSeleccionado.DATOS_CONTACTO && (
+      
+     {/* Sección Opcional: Información Adicional del Cliente si existe */}
+      {(puertoSeleccionado.CONTACTO_NOMBRE || puertoSeleccionado.CONTACTO_TELEFONO) && (
         <div className="mt-4 pt-3 border-t border-slate-800/40">
           <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">
-            Cliente Asignado
+            Contacto de Cliente Asignado
           </span>
           <span className="text-xs text-slate-300 font-medium mt-0.5 block">
-            {puertoSeleccionado.DATOS_CONTACTO.empresa_nombre} — {puertoSeleccionado.DATOS_CONTACTO.contacto_nombre}
+            {puertoSeleccionado.CONTACTO_NOMBRE || "Sin nombre registrado"} — {puertoSeleccionado.CONTACTO_TELEFONO || "Sin teléfono registrado"}
           </span>
         </div>
       )}

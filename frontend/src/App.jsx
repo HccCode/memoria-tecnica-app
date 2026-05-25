@@ -85,6 +85,7 @@ function App() {
   const [idUserEditando, setIdUserEditando] = useState(null);
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [newNombreCompleto, setNewNombreCompleto] = useState('');
   const [newRole, setNewRole] = useState('RNOC');
   
   const [newNumEmpleado, setNewNumEmpleado] = useState('');
@@ -128,11 +129,21 @@ function App() {
   const [fallaTT, setFallaTT] = useState('');
   const [fallaOT, setFallaOT] = useState('');
   const [fallaInfo, setFallaInfo] = useState('');
-  const [fallaAccesos, setFallaAccesos] = useState('');
-  const [fallaAlarmas, setFallaAlarmas] = useState('');
+  const [fallaEnergizado, setFallaEnergizado] = useState('SI');
+  const [fallaAlarmasEq, setFallaAlarmasEq] = useState('NO');
+  const [fallaConexiones, setFallaConexiones] = useState('SI');
+  const [fallaStatusPuerto, setFallaStatusPuerto] = useState('UP');
+  
+  const [fallaPing, setFallaPing] = useState('NO');
+  const [fallaAccesosSel, setFallaAccesosSel] = useState('NO');
+
 
   useEffect(() => {
-    if (usuario) setFallaOperador(usuario.username.toUpperCase());
+    if (usuario) {
+      // Intenta usar el nombre completo, si no existe usa el username
+      const nombreParaMostrar = usuario.nombre_completo || usuario.username;
+      setFallaOperador(nombreParaMostrar.toUpperCase());
+    }
   }, [usuario]);
 
   const generarTextoFalla = () => {
@@ -143,14 +154,11 @@ function App() {
     const tt = fallaTT || '_____';
     const ot = fallaOT || '_____';
     const infoF = fallaInfo || '...';
-    const accesos = fallaAccesos || '...';
-    const alarmas = fallaAlarmas || '...';
 
     // Variables Automáticas de la BD
     const sucursal = puertoDetalle.SERVICIO || 'N/A';
     const parcheo = puertoDetalle.PARCHEO || 'N/A';
     const dist = puertoDetalle.DISTANCIA_CLIENTE || 'N/A';
-    const hubNameStr = puertoDetalle.HUB_PERTENENCIA || 'N/A'; 
     const ruta = puertoDetalle.RUTA || 'N/A';
     const hilos = puertoDetalle.HILOS || 'N/A';
     const lambdas = puertoDetalle.LAMBDAS || 'N/A';
@@ -158,8 +166,10 @@ function App() {
     const potHub = puertoDetalle.POTENCIA_HUB || 'N/A';
     const coords = puertoDetalle.COORDENADAS || 'N/A';
     const dir = puertoDetalle.DIRECCION || 'N/A';
+    const contactoNombre = puertoDetalle.CONTACTO_NOMBRE || 'SIN REGISTRO';
+    const contactoTel = puertoDetalle.CONTACTO_TELEFONO || 'SIN REGISTRO';
 
-    return `RNOC ${op} INFORMA INICIO DE FALLA MCA\n \nTT - ${tt}\nOT - ${ot}\n\nSUCURSAL:  ${sucursal}\n \n[TT] ${infoF}\n \nACCESOS \n${accesos}\n\nPARCHEO:\n${parcheo}\nDistancias:\n${dist}\nHUB:\n${hubNameStr}\nRuta:\n${ruta}\nHilos fibra:\n${hilos}\nEtiquetas lambdas:\n${lambdas}\nPOTENCIA ANTERIOR CLIENTE:\n${potCPE}\nPOTENCIA ANTERIOR HUB:\n${potHub}\nUBICACION:\n${coords}\n${dir}\n\nALARMA:\n${alarmas}\n\nAL MOMENTO DE LOCALIZAR AFECTACION, DE SU APOYO CON MEDICION EN AMBOS SENTIDOS PARA DESCARTAR SEGUNDOS DAÑOS*\n\n\nDE SU APOYO PARA ATENCION Y SEGUIMIENTO`;
+    return `RNOC ${op} INFORMA INICIO DE FALLA MCA\n \nTT - ${tt}\nOT - ${ot}\n\nSERVICIO:\n${sucursal}\n \nCOMENTARIO ADICIONAL:\n${infoF}\n \nVALIDACIONES INICIALES:\n- Equipo Energizado: ${fallaEnergizado}\n- Alarmas en Equipos: ${fallaAlarmasEq}\n- Conexiones Correctas: ${fallaConexiones}\n- Status Puerto: ${fallaStatusPuerto}\n- Ping exitoso a CPE: ${fallaPing}\n- Falla Accesos: ${fallaAccesosSel}\n\nCONTACTO EN SITIO: ${contactoNombre} \nTELEFONO: ${contactoTel}\n\nPARCHEO:\n${parcheo}\nDistancias:\n${dist}\nRuta:\n${ruta}\nHilos fibra:\n${hilos}\nEtiquetas lambdas:\n${lambdas}\nPOTENCIA ANTERIOR CLIENTE:\n${potCPE}\nPOTENCIA ANTERIOR HUB:\n${potHub}\nUBICACION:\n${coords}\n${dir}\n\nAL MOMENTO DE LOCALIZAR AFECTACION, DE SU APOYO CON MEDICION EN AMBOS SENTIDOS PARA DESCARTAR SEGUNDOS DAÑOS*\n\n\nDE SU APOYO PARA ATENCION Y SEGUIMIENTO`;
   };
 
   const handleCopiarFalla = () => {
@@ -498,6 +508,7 @@ function App() {
     setIdUserEditando(null);
     setNewUsername('');
     setNewPassword('');
+    setNewNombreCompleto('');
     setNewRole('RNOC');
     setNewPlazas(['*']);
     setNewNumEmpleado('');
@@ -519,7 +530,7 @@ function App() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
         body: JSON.stringify({ 
           username: newUsername, password: newPassword, role: newRole, plazas: plazasString,
-          num_empleado: newNumEmpleado, correo: newCorreo, area_org: newArea,
+          nombre_completo: newNombreCompleto,num_empleado: newNumEmpleado, correo: newCorreo, area_org: newArea,
           region_asignacion: newRegionUsuario, puesto: newPuesto
         }) 
       });
@@ -540,6 +551,7 @@ function App() {
     setNewUsername(u.username || ''); 
     setNewRole(u.role || 'RNOC'); 
     setNewPassword('');
+    setNewNombreCompleto(u.nombre_completo || '');
     setNewPlazas(u.plazas ? u.plazas.split(',') : []);
     
     setNewNumEmpleado(u.num_empleado || '');
@@ -744,7 +756,11 @@ function App() {
       <header className="bg-[#0b132b] border-b border-slate-800 px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg border border-blue-500/20"><Server className="w-6 h-6" /></div>
-          <div><h1 className="text-lg font-bold text-white">MT_DB Manager</h1><p className="text-[10px] text-slate-500 font-mono">ROOT@{usuario?.username}</p></div>
+          <div><h1 className="text-lg font-bold text-white">MT_DB Manager</h1>
+
+            <p className="text-[10px] text-slate-500 font-mono">ROOT@{usuario?.username}</p>
+            <p className="text-[10px] text-slate-500 font-mono">{usuario?.nombre_completo || 'Operador'}</p>
+          </div>
         </div>
 
         <div className="flex bg-[#050814] p-1 rounded-xl border border-slate-800 flex-wrap justify-center gap-2.5">
@@ -1335,6 +1351,18 @@ function App() {
                           </div>
                         </div>
 
+                          {/* NUEVOS CAMPOS DE CONTACTO */}
+                        <div className="grid grid-cols-2 gap-3 mb-2">
+                          <div>
+                            <label className="text-[10px] text-slate-500 block font-bold mb-1">NOMBRE DE CONTACTO</label>
+                            <input type="text" disabled={!puedeEditar} value={editCampos.CONTACTO_NOMBRE || ''} onChange={e=>setEditCampos({...editCampos, CONTACTO_NOMBRE: e.target.value})} className="w-full bg-slate-950 p-2 rounded border border-slate-800 text-white" placeholder="Ej. Juan Pérez" />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-500 block font-bold mb-1">TELÉFONO DE CONTACTO</label>
+                            <input type="text" disabled={!puedeEditar} value={editCampos.CONTACTO_TELEFONO || ''} onChange={e=>setEditCampos({...editCampos, CONTACTO_TELEFONO: e.target.value})} className="w-full bg-slate-950 p-2 rounded border border-slate-800 text-white font-mono" placeholder="Ej. 555-1234" />
+                          </div>
+                        </div>
+
                         <div>
                           <label className="text-[10px] text-slate-500 block font-bold mb-1">FECHA DE ENTREGA</label>
                           <input 
@@ -1628,6 +1656,12 @@ function App() {
                 <form onSubmit={handleProcesarUsuario} className="space-y-3" autoComplete="off">
                   <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider border-b border-slate-800 pb-2">{idUserEditando ? '✏️ Editar Operador' : '➕ Nuevo Operador'}</h3>
                   
+                  {/* NUEVO INPUT OBLIGATORIO */}
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-1">Nombre Completo *</label>
+                    <input type="text" value={newNombreCompleto} onChange={e => setNewNombreCompleto(e.target.value)} required className="w-full bg-[#1c2541] border border-slate-700 text-xs p-2 rounded text-white focus:outline-none focus:border-blue-500" placeholder="Ej. Juan Pérez" />
+                  </div>
+
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-[10px] text-slate-500 block mb-1">Username *</label>
@@ -1761,7 +1795,9 @@ function App() {
                             return (
                               <tr key={u.id} className="hover:bg-slate-900/30">
                                 <td className="p-3 font-medium text-slate-200">
-                                  {u.username}
+                                  {/* MOSTRAR NOMBRE Y USERNAME */}
+                                  <div className="font-bold text-white">{u.nombre_completo || 'Sin nombre'}</div>
+                                  <div className="text-[10px] text-slate-400">@{u.username}</div>
                                   {u.correo && <div className="text-[9px] text-slate-500 mt-0.5">{u.correo}</div>}
                                 </td>
                                 <td className="p-3">
@@ -1844,20 +1880,56 @@ function App() {
                           </div>
                        </div>
 
-                       <div>
-                          <label className="text-[10px] text-slate-500 font-bold block mb-1">INFORMACIÓN DE FALLA [TT]</label>
-                          <textarea rows="2" value={fallaInfo} onChange={e=>setFallaInfo(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white focus:border-red-500 outline-none resize-none" placeholder="Describa el motivo o detalles de la afectación..." />
+                       <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-bold block mb-1">Equipo Energizado</label>
+                            <select value={fallaEnergizado} onChange={e=>setFallaEnergizado(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white outline-none focus:border-red-500">
+                              <option value="SI">SI</option>
+                              <option value="NO">NO</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-bold block mb-1">Alarmas en Equipos</label>
+                            <select value={fallaAlarmasEq} onChange={e=>setFallaAlarmasEq(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white outline-none focus:border-red-500">
+                              <option value="SI">SI</option>
+                              <option value="NO">NO</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-bold block mb-1">Conexiones Correctas</label>
+                            <select value={fallaConexiones} onChange={e=>setFallaConexiones(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white outline-none focus:border-red-500">
+                              <option value="SI">SI</option>
+                              <option value="NO">NO</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-bold block mb-1">Status Puerto</label>
+                            <select value={fallaStatusPuerto} onChange={e=>setFallaStatusPuerto(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white outline-none focus:border-red-500">
+                              <option value="UP">UP</option>
+                              <option value="DOWN">DOWN</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-bold block mb-1">Ping exitoso a CPE</label>
+                            <select value={fallaPing} onChange={e=>setFallaPing(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white outline-none focus:border-red-500">
+                              <option value="SI">SI</option>
+                              <option value="NO">NO</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-bold block mb-1">Accesos</label>
+                            <select value={fallaAccesosSel} onChange={e=>setFallaAccesosSel(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white outline-none focus:border-red-500">
+                              <option value="SI">SI</option>
+                              <option value="NO">NO</option>
+                            </select>
+                          </div>                          
+                       </div>
+                     <div>
+                          <label className="text-[10px] text-slate-500 font-bold block mb-1">INFORMACIÓN ADICIONAL</label>
+                          <textarea rows="2" value={fallaInfo} onChange={e=>setFallaInfo(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white focus:border-red-500 outline-none resize-none" placeholder="COMENTARIOS ADICIONALES..." />
                        </div>
 
-                       <div>
-                          <label className="text-[10px] text-slate-500 font-bold block mb-1">INFORMACIÓN DE ACCESOS</label>
-                          <textarea rows="2" value={fallaAccesos} onChange={e=>setFallaAccesos(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white focus:border-red-500 outline-none resize-none" placeholder="Ej. Acceso 24/7 sin restricciones..." />
-                       </div>
 
-                       <div>
-                          <label className="text-[10px] text-slate-500 font-bold block mb-1">COLOCAR ALARMAS</label>
-                          <textarea rows="2" value={fallaAlarmas} onChange={e=>setFallaAlarmas(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white focus:border-red-500 outline-none resize-none" placeholder="Ej. LOS, LOF, Equipo Down..." />
-                       </div>
                     </div>
                  </div>
                  
@@ -1894,7 +1966,7 @@ function App() {
             {/* CABECERA DEL MODAL */}
             <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 rounded-t-xl shrink-0">
               <h2 className="text-lg font-black text-blue-400 flex items-center gap-2">
-                <Eye className="w-5 h-5" /> INFORMACIÓN DE PUERTO: {puertoDetalle.PUERTO}
+                <Eye className="w-5 h-5" /> INFORMACIÓN DE PUERTO: {puertoDetalle.EQUIPO_HOTEL_ID} - {puertoDetalle.PUERTO}
               </h2>
               <button onClick={() => setMostrarModalVisualizar(false)} className="text-slate-500 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors cursor-pointer">
                 <X className="w-5 h-5" />
@@ -1940,6 +2012,11 @@ function App() {
                     <div>
                       <span className="text-slate-500 text-[10px] block font-bold">EQUIPO CPE (MARCA / MODELO / SERIE)</span>
                       <span className="text-slate-200 font-mono">{puertoDetalle.MARCA_CPE || '-'} / {puertoDetalle.MODELO_CPE || '-'} / {puertoDetalle.SERIE_CPE || '-'}</span>
+                    </div>
+                    {/* NUEVO BLOQUE DE CONTACTO PARA EL MODAL */}
+                    <div>
+                      <span className="text-slate-500 text-[10px] block font-bold">CONTACTO DEL CLIENTE</span>
+                      <span className="text-slate-200">{puertoDetalle.CONTACTO_NOMBRE || '-'} {puertoDetalle.CONTACTO_TELEFONO ? `(${puertoDetalle.CONTACTO_TELEFONO})` : ''}</span>
                     </div>
                   </div>
                 </div>
